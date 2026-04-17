@@ -4,59 +4,67 @@
 # LUSTRO: Universal Storage-to-Container Runner
 # ==========================================
 
+# 1. Directory Definitions
 ORIGIN="$PWD"
 PROJECT_NAME=$(basename "$ORIGIN")
 CONTAINER_DIR="$HOME/container/$PROJECT_NAME"
 
 # --- SAFETY GUARD ---
 if [[ "$ORIGIN" == "/storage/emulated/0" || "$ORIGIN" == "/sdcard" || "$ORIGIN" == "$HOME" ]]; then
-    echo -e "\033[31m[!] ERROR: Jangan jalankan di root storage atau Home langsung, Brother!\033[0m"
+    echo -e "\033[31m[!] ERROR: Cannot run Lustro in root storage or Home directory.\033[0m"
     exit 1
 fi
 
-# -- FILE COUNT --
+# File Counter & Confirmation
 FILE_COUNT=$(find "$ORIGIN" -maxdepth 2 -type f | wc -l)
 if [ "$FILE_COUNT" -gt 50 ]; then
-    echo -e "\033[33m[!] WARNING: there are $FILE_COUNT files in here. Please confirm if you wan [Y/n]: \033[0m"
-    read -r jawaban
-    if [[ "$answer" != "y" && "$answer" != "Y" ]]; then
-        echo "Operation cancelled."
+    echo -e "\033[33m[!] WARNING: $FILE_COUNT files detected. Sync might be slow. Continue? (y/n): \033[0m"
+    read -r response
+    if [[ "$response" != "y" && "$response" != "Y" ]]; then
+        echo "Operation aborted by user."
         exit 0
     fi
 fi
 
-# -- MIRRORING --
+# Setup & Mirroring
 mkdir -p "$CONTAINER_DIR"
-echo -e "\033[34mLustro:\033[0m Mirroring project ke container..."
+echo -e "[STATUS] \033[34mLustro:\033[0m Mirroring project to secure container..."
 
+# Mirroring logic: Syncing files while excluding build targets
 rsync -avz --delete --exclude 'target/' --exclude '.git/' "$ORIGIN/" "$CONTAINER_DIR/"
 
-# -- MOVE TO CONTAINER --
+# Enter Execution Environment
 cd "$CONTAINER_DIR"
-echo -e "\n🚀 \033[32mExecuting...\033[0m"
+echo -e "\n[STATUS] \033[32mExecuting program...\033[0m"
 
-# -- DETECT LANGUAGE --
+# Language Detection & Execution Logic
 if [ -f "Cargo.toml" ]; then
-    echo -e "📦 \033[36mDetected: Rust (Cargo)\033[0m"
+    echo -e "[INFO] \033[36mDetected: Rust (Cargo Project)\033[0m"
+    echo -e "————————————————————————————————————\n"
     cargo run
 elif [ -f "$(ls *.rs 2>/dev/null | head -n 1)" ]; then
     FILE_RS=$(ls *.rs 2>/dev/null | head -n 1)
-    echo -e "🦀 \033[36mDetected: Rust Single File ($FILE_RS)\033[0m"
+    echo -e "[INFO] \033[36mDetected: Rust Single File ($FILE_RS)\033[0m"
+    echo -e "————————————————————————————————————\n"
     rustc "$FILE_RS" -o app && ./app
 elif [ -f "$(ls *.cpp 2>/dev/null | head -n 1)" ]; then
     FILE_CPP=$(ls *.cpp 2>/dev/null | head -n 1)
-    echo -e "🔵 \033[36mDetected: C++ ($FILE_CPP)\033[0m"
+    echo -e "[INFO] \033[36mDetected: C++ ($FILE_CPP)\033[0m"
+    echo -e "————————————————————————————————————\n"
     clang++ "$FILE_CPP" -o app && ./app
 elif [ -f "$(ls *.c 2>/dev/null | head -n 1)" ]; then
     FILE_C=$(ls *.c 2>/dev/null | head -n 1)
-    echo -e "⚪ \033[36mDetected: C ($FILE_C)\033[0m"
+    echo -e "[INFO] \033[36mDetected: C ($FILE_C)\033[0m"
+    echo -e "————————————————————————————————————\n"
     clang "$FILE_C" -o app && ./app
 else
-    echo -e "\033[31m FileNotFoundError: This folder doesn't has any C/C++/Rust File\033[0m"
+    echo -e "\033[31m[ERROR] No executable Rust, C, or C++ files found.\033[0m\n"
+    echo -e "————————————————————————————————————\n"
 fi
 
 EXIT_CODE=$?
 
-# -- BACK TO ORIGINAL FOLDER --
+# Return to Origin
 cd "$ORIGIN"
-echo -e "\nDone (exit code: $EXIT_CODE)"
+echo -e "\n————————————————————————————————————"
+echo -e "[\033[93mSUCCESS\033[0m] Process finished with exit code: $EXIT_CODE"
