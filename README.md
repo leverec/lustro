@@ -29,3 +29,6 @@ Simply navigate to any project folder in your shared storage and run:
 ```bash
 lustro
 ```
+
+## Example
+![Screenshot](Screenshot_2026-04-19-07-06-42-838_com.termux.png)
